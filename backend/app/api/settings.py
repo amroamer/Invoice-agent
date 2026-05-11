@@ -5,7 +5,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_admin, require_officer_or_admin
+from app.api.deps import get_db, require_officer_or_admin
 from app.core.config import get_settings
 from app.models.user import User
 from app.schemas.settings import (
@@ -54,7 +54,7 @@ def get_llm_settings(
 def update_llm_settings(
     body: LlmSettingsUpdate,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    user: User = Depends(require_officer_or_admin),
 ) -> LlmSettings:
     settings = get_settings()
     try:
@@ -72,7 +72,7 @@ def update_llm_settings(
     app_settings_svc.set_value(db, app_settings_svc.LLM_DEFAULT_MODEL_KEY, body.default_model)
     log_action(
         db,
-        user_id=admin.id,
+        user_id=user.id,
         action="settings.llm.update",
         entity_type="app_setting",
         entity_id=None,

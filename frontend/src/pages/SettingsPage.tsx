@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/Table";
-import { useAuth } from "@/hooks/useAuth";
 
 function formatSize(bytes?: number | null): string {
   if (!bytes && bytes !== 0) return "—";
@@ -34,9 +33,7 @@ function formatDate(iso?: string | null): string {
 }
 
 export function SettingsPage() {
-  const { me } = useAuth();
   const qc = useQueryClient();
-  const isAdmin = me?.role === "admin";
 
   const llm = useQuery({ queryKey: ["llm-settings"], queryFn: getLlmSettings });
   const models = useQuery({ queryKey: ["llm-models"], queryFn: listLlmModels });
@@ -132,30 +129,28 @@ export function SettingsPage() {
                 The model used by extraction, matching, and recommendation agents.
               </p>
             </div>
-            {isAdmin && (
-              <div className="flex items-center gap-2">
-                {isDirty && (
-                  <button
-                    type="button"
-                    className="text-xs text-slate-500 hover:text-slate-800"
-                    onClick={() => setPendingModel(null)}
-                  >
-                    Reset
-                  </button>
-                )}
-                <Button
-                  onClick={() => pendingModel && save.mutate(pendingModel)}
-                  disabled={!isDirty || save.isPending}
+            <div className="flex items-center gap-2">
+              {isDirty && (
+                <button
+                  type="button"
+                  className="text-xs text-slate-500 hover:text-slate-800"
+                  onClick={() => setPendingModel(null)}
                 >
-                  {save.isPending ? "Saving…" : "Save"}
-                </Button>
-              </div>
-            )}
+                  Reset
+                </button>
+              )}
+              <Button
+                onClick={() => pendingModel && save.mutate(pendingModel)}
+                disabled={!isDirty || save.isPending}
+              >
+                {save.isPending ? "Saving…" : "Save"}
+              </Button>
+            </div>
           </div>
           <select
             className="h-10 w-full max-w-md rounded-md border border-slate-300 bg-white px-3 text-sm disabled:bg-slate-50 disabled:text-slate-500"
             value={selectedModel}
-            disabled={!isAdmin || models.isLoading}
+            disabled={models.isLoading}
             onChange={(e) => setPendingModel(e.target.value)}
           >
             {!modelOptions.find((m) => m.name === selectedModel) && selectedModel && (
@@ -169,9 +164,6 @@ export function SettingsPage() {
             ))}
           </select>
           {saveError && <p className="mt-2 text-sm text-red-600">{saveError}</p>}
-          {!isAdmin && (
-            <p className="mt-2 text-xs text-slate-500">Only administrators can change the default model.</p>
-          )}
         </CardBody>
       </Card>
 
