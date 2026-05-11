@@ -136,7 +136,7 @@ export const updateInvoice = (id: string, body: InvoiceUpdateIn): Promise<Invoic
   api<Invoice>(`/invoices/${id}`, { method: "PATCH", body });
 
 export async function fetchInvoiceFile(id: string): Promise<{ blob: Blob; contentType: string }> {
-  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/api";
+  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/InvoiceAgent/api";
   const token = getAccessToken();
   const res = await fetch(`${base}/invoices/${id}/file`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,

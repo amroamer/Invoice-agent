@@ -59,7 +59,7 @@ export const actionBreakdown = (since?: string): Promise<ActionBreakdownEntry[]>
   api<ActionBreakdownEntry[]>(`/audit/actions${qs({ since })}`);
 
 export async function downloadAuditCsv(f: AuditFilters = {}): Promise<void> {
-  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/api";
+  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/InvoiceAgent/api";
   const token = getAccessToken();
   const url = `${base}/audit/logs.csv${qs({ ...f, limit: 10000 })}`;
   const res = await fetch(url, {

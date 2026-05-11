@@ -69,6 +69,7 @@ export const router = createBrowserRouter([
   },
   { path: "*", element: <Navigate to="/" replace /> },
 ], {
+  basename: "/InvoiceAgent",
   future: {
     v7_startTransition: true,
     v7_relativeSplatPath: true,

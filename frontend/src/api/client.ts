@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/api";
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/InvoiceAgent/api";
 const TOKEN_KEY = "invoice_agent_access_token";
 const REFRESH_KEY = "invoice_agent_refresh_token";
 
