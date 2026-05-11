@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     password_pepper: str = ""
     session_inactivity_minutes: int = 30
     max_failed_logins: int = 5
+    sso_jwt_secret: str = ""
 
     ollama_host: str = "http://ollama:11434"
     ollama_model: str = "qwen2.5:7b"

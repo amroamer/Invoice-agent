@@ -33,3 +33,13 @@ export async function getMe(): Promise<Me> {
 export async function logout(): Promise<void> {
   await api<void>("/auth/logout", { method: "POST" });
 }
+
+export async function ssoExchange(): Promise<TokenPair | null> {
+  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/InvoiceAgent/api";
+  const res = await fetch(`${base}/auth/sso`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) return null;
+  return res.json();
+}

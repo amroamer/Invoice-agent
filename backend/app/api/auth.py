@@ -1,5 +1,6 @@
 import logging
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -60,6 +61,43 @@ def login(
         ip=request.client.host if request and request.client else None,
     )
     db.commit()
+
+    return TokenPair(
+        access_token=create_token(str(user.id), "access", {"role": user.role.value}),
+        refresh_token=create_token(str(user.id), "refresh"),
+    )
+
+
+@router.post("/sso", response_model=TokenPair)
+def sso(request: Request, db: Session = Depends(get_db)) -> TokenPair:
+    settings = get_settings()
+    cookie = request.cookies.get("kpmg_auth_token")
+    if not cookie:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "No SSO cookie found")
+    if not settings.sso_jwt_secret:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "SSO not configured")
+    try:
+        payload = jwt.decode(cookie, settings.sso_jwt_secret, algorithms=["HS256"])
+    except jwt.PyJWTError as exc:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid SSO token") from exc
+
+    email = payload.get("email")
+    if not email:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid SSO token")
+    local_part = str(email).split("@", 1)[0]
+    full_name = payload.get("full_name") or local_part
+
+    user = db.query(User).filter(User.email == email).one_or_none()
+    if not user:
+        user = User(
+            email=email,
+            username=str(email)[:120],
+            full_name=full_name,
+            password_hash=hash_password(uuid4().hex),
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
 
     return TokenPair(
         access_token=create_token(str(user.id), "access", {"role": user.role.value}),

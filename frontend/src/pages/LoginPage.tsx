@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
@@ -8,13 +8,17 @@ import { Label } from "@/components/ui/Label";
 import { useAuth } from "@/hooks/useAuth";
 
 export function LoginPage() {
-  const { me, login } = useAuth();
+  const { me, login, signInWithSso } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    void signInWithSso();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (me) {
     const to = (location.state as { from?: Location } | null)?.from?.pathname ?? "/";

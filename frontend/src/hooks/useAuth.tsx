@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { clearTokens, getAccessToken, setTokens } from "@/api/client";
-import { getMe, login as apiLogin, logout as apiLogout, type Me } from "@/api/auth";
+import { getMe, login as apiLogin, ssoExchange, type Me } from "@/api/auth";
 
 type AuthContextValue = {
   me: Me | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
+  signInWithSso: () => Promise<boolean>;
   logout: () => Promise<void>;
 };
 
@@ -41,12 +42,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setTokens(pair.access_token, pair.refresh_token);
         setMe(await getMe());
       },
-      logout: async () => {
+      signInWithSso: async () => {
         try {
-          await apiLogout();
+          const pair = await ssoExchange();
+          if (!pair) return false;
+          setTokens(pair.access_token, pair.refresh_token);
+          setMe(await getMe());
+          return true;
         } catch {
-          /* best-effort */
+          return false;
         }
+      },
+      logout: async () => {
         clearTokens();
         setMe(null);
       },
