@@ -1,0 +1,100 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Host port mapping intentionally omitted to avoid clashing with other
+    # local Postgres containers; reach via `docker compose exec postgres psql`.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # Host port mapping intentionally omitted (see note on postgres).
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Ollama runs as a host-level "ollama-shared" container outside this compose
+  # stack. Backend/worker reach it via OLLAMA_HOST=http://host.docker.internal:11434
+  # in .env. No in-stack ollama service.
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - uploads:/data/uploads
+    # Backend not exposed on the host — nginx proxies /api to backend:8000 on
+    # the internal network. Reach backend directly via
+    # `docker compose exec backend curl localhost:8000/health` if needed.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - uploads:/data/uploads
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    env_file: .env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      # 5173 is commonly held by other Vite dev servers (e.g. arch-assistant);
+      # expose this project's Vite on 5174 instead.
+      - "127.0.0.1:5174:5173"
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      # Bind to 127.0.0.1 (IPv4 loopback) only — avoids Windows Firewall prompts
+      # and IPv6-only listener quirks some browsers hit on Windows+Docker Desktop.
+      # Override with INVOICEAGENT_HTTP_PORT in .env if 9090 clashes.
+      - "127.0.0.1:${INVOICEAGENT_HTTP_PORT:-9090}:80"
+
+volumes:
+  postgres_data:
+  uploads:
